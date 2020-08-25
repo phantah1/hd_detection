@@ -64,14 +64,14 @@ class DetectorAPI:
         self.default_graph.close()
 
 
-if __name__ == "__main__":
+def recognize(img_path):
     model_path = 'faster_rcnn/frozen_inference_graph.pb'
     odapi = DetectorAPI(path_to_ckpt=model_path)
     threshold = 0.7
 
     # rotation angle in degree
 
-    img = cv2.imread("test.jpg")
+    img = cv2.imread(img_path)
     # ori_shape = img.shape
     # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # new_img = np.zeros(ori_shape)
@@ -118,4 +118,6 @@ if __name__ == "__main__":
         if k == ord('q'):
             break
 
-    cv2.destroyAllWindows()
+    return count, new_img
+
+recognize("..\\..\\input\\test0.jpg")

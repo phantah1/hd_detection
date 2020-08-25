@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 import cv2
 import time
+import argparse
 
 
 class DetectorAPI:
@@ -63,55 +64,58 @@ class DetectorAPI:
         self.default_graph.close()
 
 
-def getFrame(sec):
-    cap.set(cv2.CAP_PROP_POS_MSEC, sec*1000)
-    hasFrames, image = cap.read()
-    return hasFrames
-
-
-if __name__ == "__main__":
+def recognize(img_path):
     model_path = 'faster_rcnn/frozen_inference_graph.pb'
     odapi = DetectorAPI(path_to_ckpt=model_path)
     threshold = 0.7
-    cap = cv2.VideoCapture(0)
 
-    sec = 0
-    frameRate = 0.001
-    success = getFrame(sec)
+    # rotation angle in degree
 
+    img = cv2.imread(img_path)
+    # ori_shape = img.shape
+    # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # new_img = np.zeros(ori_shape)
+    # new_img[:, :, 0] = img/255
+    # new_img[:, :, 1] = img/255
+    # new_img[:, :, 2] = img/255
+    new_img = img
 
-# rotation angle in degree
+    # img = cv2.imread("test.jpg")
+    # ori_shape = img.shape
+    # ori_image = img
+    # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # new_img = np.zeros(ori_shape)
+    # arr = np.ndarray((480, 848))
+    # arr = (ori_image[:, :, 0] + ori_image[:, :, 1] + ori_image[:, :, 2]) / 255
+    # new_img[:, :, 0] = arr
+    # new_img[:, :, 1] = arr
+    # new_img[:, :, 2] = arr
 
-    while success:
-        r, img = cap.read()
+    #img = cv2.resize(img, (1920, 1080))
+    #img = ndimage.rotate(img, 90)
+    boxes, scores, classes, num = odapi.processFrame(new_img)
 
-        img = cv2.resize(img, (848, 480))
-        #img = cv2.resize(img, (1920, 1080))
-        # img = ndimage.rotate(img, 90)
-        boxes, scores, classes, num = odapi.processFrame(img)
+    final_score = np.squeeze(scores)
+    count = 0
 
-        final_score = np.squeeze(scores)
-        count = 0
+    # Visualization of the results of a detection.
+    for i in range(len(boxes)):
+        # Class 1 represents human
+        if scores is None or final_score[i] > threshold:
+            count = count + 1
+        if classes[i] == 1 and scores[i] > threshold:
+            box = boxes[i]
+            cv2.rectangle(new_img, (box[1], box[0]),
+                          (box[3], box[2]), (0, 255, 0), 2)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    cv2.putText(new_img, "Person detected {}".format(str(count)),
+                (10, 50), font, 0.75, (255, 0, 0), 1, cv2.LINE_AA)
 
-        # Visualization of the results of a detection.
-        for i in range(len(boxes)):
-            # Class 1 represents human
-            if scores is None or final_score[i] > threshold:
-                count = count + 1
-            if classes[i] == 1 and scores[i] > threshold:
-                box = boxes[i]
-                cv2.rectangle(img, (box[1], box[0]),
-                              (box[3], box[2]), (255, 0, 0), 2)
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        cv2.putText(img, "Person detected {}".format(str(count)),
-                    (10, 50), font, 0.75, (255, 0, 0), 1, cv2.LINE_AA)
-        cv2.imshow("preview", img)
-        sec = sec + frameRate
-        sec = round(sec, 2)
-        success = getFrame(sec)
-        key = cv2.waitKey(1)
-        if key & 0xFF == ord('q'):
-            break
+    print(f"Person detected {count}")
+    #while True:
+    #    cv2.imshow("preview", new_img)
+    #    k = cv2.waitKey(1) & 0xff
+    #    if k == ord('q'):
+    #        break
 
-cap.release()
-cv2.destroyAllWindows()
+    return count, new_img
